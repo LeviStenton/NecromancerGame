@@ -4,17 +4,21 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
+    [Header("Health")]
     public float maxHealth;
     public float currentHealth;
 
+    [Header("Movement")]
+    private Vector3 moveDirection;
     public bool isMoving;
     public bool canMove;
     public bool canJump;
     public float maxMoveSpeed;
     float moveSpeedX;
     float moveSpeedZ;
-    Vector3 velocity; 
+    Vector3 velocity;
 
+    [Header("Camera")]
     public GameObject camPivot;
     GameObject playerCam;
     Transform playerTrans;
@@ -23,12 +27,13 @@ public class PlayerController : MonoBehaviour
     PlayerUIController uiController;
     public float playerRotSpeed;
 
+    [Header("Raycast Shooting")]
     public float shootingDistance;
     public float weaponDamage;
     public float critMultiplier;
     public LayerMask enemyLayer;
-    public LayerMask enemyHeadLayer;
 
+    [Header("Jumping")]
     Vector2 movementInput = new Vector2();
     public bool grounded;
     bool jumpInput;
@@ -38,18 +43,21 @@ public class PlayerController : MonoBehaviour
     public int minJumpCount = 0;
     public int jumpCountIntervals = 1;
     public int currentJumpCount;
-
-    public int followerCount;
-
     public ParticleSystem butterflyJump;
+
+    [Header("Followers")]
+    public int followerCount;
+    
 
     //EnemyController enemyCont;
 
     // Use this for initialization
     void Start()
     {
-        currentHealth = maxHealth;
         Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+
+        currentHealth = maxHealth;        
         canMove = true;
         playerCam = GameObject.FindGameObjectWithTag("MainCamera");
         uiController = GetComponentInChildren<PlayerUIController>(); 
@@ -82,16 +90,17 @@ public class PlayerController : MonoBehaviour
         { 
             float moveX = Input.GetAxis("Horizontal");
             float moveZ = Input.GetAxis("Vertical");
+            gameObject.GetComponent<Rigidbody>().velocity = transform.forward * moveZ * maxMoveSpeed;
+            gameObject.GetComponent<Rigidbody>().velocity += transform.right * moveX * maxMoveSpeed;
             if (Input.GetAxis("Horizontal") > 0 || Input.GetAxis("Horizontal") < 0 || Input.GetAxis("Vertical") > 0 || Input.GetAxis("Vertical") < 0)
             {
                 isMoving = true;
-                gameObject.GetComponent<Rigidbody>().velocity = transform.forward * moveZ * maxMoveSpeed;
-                gameObject.GetComponent<Rigidbody>().velocity += transform.right * moveX * maxMoveSpeed;
+                
             }
             else
                 isMoving = false;
 
-        }      
+        }  
     }
 
      void FaceCamera()
@@ -113,22 +122,11 @@ public class PlayerController : MonoBehaviour
     {
         if (jumpInput && canJump && currentJumpCount <= maxJumpCount)
         {
-            canMove = false;
-            myRigidbody.velocity = new Vector3(myRigidbody.velocity.x, 0f, myRigidbody.velocity.z);
+            //canMove = false;
             currentJumpCount += jumpCountIntervals;
             butterflyJump.Play();
-            myRigidbody.AddForce(Vector3.up * jumpForce * myRigidbody.mass * -Physics.gravity.y);
+            myRigidbody.AddForce(new Vector3(0, jumpForce, 0), ForceMode.Impulse);
             Debug.Log("Jumping");
-            /*if (isSprinting)
-            {
-                myRigidbody.AddForce(Vector3.up * jumpForce * myRigidbody.mass * -Physics.gravity.y * jumpSprintVerticalForceMultiplier);
-                myRigidbody.AddForce(playerTrans.forward * jumpForce * myRigidbody.mass * myRigidbody.drag * jumpSprintForce);
-            }
-            else
-            {
-                myRigidbody.AddForce(Vector3.up * jumpForce * myRigidbody.mass * -Physics.gravity.y);
-                myRigidbody.AddForce(playerTrans.forward * jumpForce * myRigidbody.mass * myRigidbody.drag * jumpForwardForce * movementInput.y);
-            }*/
         }
 
         if(currentJumpCount >= maxJumpCount)
@@ -163,13 +161,8 @@ public class PlayerController : MonoBehaviour
         Debug.DrawRay(ray.origin, ray.direction * 1000, Color.green);
 
         RaycastHit hit;
-        if (Physics.Raycast(ray, out hit, shootingDistance, enemyHeadLayer))
-        {
-            //enemyCont.takeDamage(weaponDamage * critMultiplier);
-            Debug.Log("Critical Hit");
 
-        }
-        else if (Physics.Raycast(ray, out hit, shootingDistance, enemyLayer))
+        if (Physics.Raycast(ray, out hit, shootingDistance, enemyLayer))
         {
             //enemyCont.takeDamage(weaponDamage);
             Debug.Log("Hit");

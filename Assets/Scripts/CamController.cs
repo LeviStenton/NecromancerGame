@@ -6,6 +6,7 @@ public class CamController : MonoBehaviour {
 
     public GameObject player;
 
+    PlayerSSUIController playerSSUI;
     GameObject camPiv;
     public GameObject myCam;
     public Transform camNearLeft;
@@ -20,7 +21,12 @@ public class CamController : MonoBehaviour {
     public float mouseSensY;
     public float mouseSenseYMax;
     public float mouseSenseYStart;
-    public float viewRange;
+    private float rotY = 0.0f;
+    private float rotX = 0.0f;
+    Quaternion localXRotation;
+    Quaternion localYRotation;
+    public float viewRangeUp;
+    public float viewRangeDown;
     private float rotateValueX;
     private float rotateValueY;
     public bool invertCam;
@@ -36,12 +42,19 @@ public class CamController : MonoBehaviour {
     public float switchSpeed;
     public float zoomSpeed;
     public float switchTimer;
+    int yInvert = 1;
 
     void Start()
     {
+        playerSSUI = GameObject.FindGameObjectWithTag("SSUI").GetComponent<PlayerSSUIController>();
+
         camSideSwitched = false;
         myCam.transform.position = camNearRight.position;
         camPiv = this.gameObject;
+
+        Vector3 rot = transform.localRotation.eulerAngles;
+        rotY = rot.y;
+        rotX = rot.x;
     }
 
     // Update is called once per frame
@@ -52,38 +65,21 @@ public class CamController : MonoBehaviour {
         CameraScroll();
         CamSideSwitch();
         camZoomSwitch();
-        //CameraRange();
     }
 
     public void CameraRotation()
     {
-        Debug.Log(invertCam);
-        if (invertCam)
-            mouseSensY = -mouseSensY;
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = -Input.GetAxis("Mouse Y");
 
-        /*float mouseSpeedX = Input.GetAxis("Mouse Y") * mouseSensY;
-        float mouseSpeedY = Input.GetAxis("Mouse X") * mouseSensX;
-        rotateValueX = new Vector3(mouseSpeedX * -1, 0, 0);
-        transform.eulerAngles = transform.eulerAngles + rotateValueX;
-        rotateValueY = new Vector3(0, mouseSpeedY * +1, 0);
-        transform.eulerAngles = transform.eulerAngles + rotateValueY;*/
+        rotY += mouseX * mouseSensX;
+        rotX += (mouseY  * (playerSSUI.invertYToggle.isOn ? -yInvert : yInvert)) * mouseSensY;
 
-        float mouseSpeedX = Input.GetAxis("Mouse X");
-        float mouseSpeedY = -Input.GetAxis("Mouse Y");
-
-        rotateValueX += mouseSpeedX * mouseSensX;
-        rotateValueY += mouseSpeedY * mouseSensY;
-
-        rotateValueX = Mathf.Clamp(rotateValueX, -viewRange, viewRange);
-
-        Quaternion localRotation = Quaternion.Euler(rotateValueX, 0.0f, 0.0f);
-        transform.localRotation = localRotation;
+        rotX = Mathf.Clamp(rotX, viewRangeDown, viewRangeUp);
+        
+        localYRotation = Quaternion.Euler(rotX, rotY, 0.0f);
+        camPiv.transform.localRotation = localYRotation;
     }
-
-    /*public void CameraRange()
-    {
-        camPiv.transform.localEulerAngles = new Vector3(Mathf.Clamp(camPiv.transform.localEulerAngles.x, -viewRange, viewRange), camPiv.transform.localEulerAngles.y, camPiv.transform.localEulerAngles.z);
-    }*/
 
     public void FollowPlayer()
     {
@@ -102,6 +98,8 @@ public class CamController : MonoBehaviour {
         else if (Input.GetAxis("Mouse ScrollWheel") < 0)
         {
             zoomedOut = true;
+            startTime = Time.time;
+            journeyLength = Vector3.Distance(myCam.transform.position, camFar.transform.position);
         }      
     }
 
@@ -116,9 +114,11 @@ public class CamController : MonoBehaviour {
 
         else if (zoomedOut)
         {
-            myCam.transform.localPosition = Vector3.Lerp(myCam.transform.localPosition, camFar.localPosition, Time.deltaTime * zoomSpeed);
-            myCam.transform.localRotation = Quaternion.Slerp(myCam.transform.localRotation, camFar.localRotation, Time.deltaTime * zoomSpeed);
-            myUI.transform.position = Vector3.Lerp(myUI.transform.position, uiFar.position, Time.deltaTime * zoomSpeed);
+            float distCovered = (Time.time - startTime) * zoomSpeed;
+            float fracJourney = distCovered / journeyLength;
+            myCam.transform.position = Vector3.Lerp(myCam.transform.position, camFar.position, fracJourney);
+            myCam.transform.localRotation = Quaternion.Slerp(myCam.transform.localRotation, camFar.localRotation, fracJourney);
+            myUI.transform.position = Vector3.Lerp(myUI.transform.position, uiFar.position, fracJourney);
         }
     }
 
